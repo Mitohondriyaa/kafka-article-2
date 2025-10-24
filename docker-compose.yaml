@@ -1,0 +1,94 @@
+services:
+  kafka-0:
+    # Будем использовать данный образ
+    image: bitnami/kafka:4.0.0
+    # Имя контейнера
+    container_name: kafka-0
+    # hostname контейнера
+    hostname: kafka-0
+    # Пробрасываем порты, чтоб слать в Kafka сообщения с хоста
+    ports:
+      - "29092:29092"
+    environment:
+      # Уникальный ID кластера
+      KAFKA_KRAFT_CLUSTER_ID: 0
+      # Уникальный ID ноды внутри кластера
+      KAFKA_CFG_NODE_ID: 0
+      # Нода и контроллер, и брокер
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      # "Слушатели" используются для указания способа подключения к Kafka ноде,
+      # То есть Kafka откроет порты и будет слушать на них подключения
+      # В нашем случае первое слово - Alias, ://: - на всех сетевых интерфейсах,
+      # Ну и в конце, очевидно, порт
+      KAFKA_CFG_LISTENERS: INTERNAL://:9091,EXTERNAL://:29092,CONTROLLER://:9093
+      # Перечисляем список нод, которые являются контроллерами в формате
+      # [NodeID]@[Hostname]:[Port]
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+      # Здесь мы указываем, куда Kafka будет "перенаправлять" клиента после того,
+      # Как тот подключится к ней. Контроллер не указываем, так как это нужно
+      # Только для внутренней работы Kafka
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka-0:9091,EXTERNAL://localhost:29092
+      # Настраиваем шифрование
+      # В нашем случае PLAINTEXT означает его отсутствие
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      # Указываем, что для контроллера используется "Слушатель" CONTROLLER
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # Указываем, что для брокеров используется "Слушатель" INTERNAL
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # Указываем, что для клиентов используется "Слушатель" EXTERNAL
+      KAFKA_CLIENT_LISTENER_NAME: EXTERNAL
+
+  kafka-1:
+    image: bitnami/kafka:4.0.0
+    container_name: kafka-1
+    hostname: kafka-1
+    ports:
+      - "29093:29092"
+    environment:
+      KAFKA_KRAFT_CLUSTER_ID: 0
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: INTERNAL://:9091,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka-1:9091,EXTERNAL://localhost:29093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CLIENT_LISTENER_NAME: EXTERNAL
+
+  kafka-2:
+    image: bitnami/kafka:4.0.0
+    container_name: kafka-2
+    hostname: kafka-2
+    ports:
+      - "29094:29092"
+    environment:
+      KAFKA_KRAFT_CLUSTER_ID: 0
+      KAFKA_CFG_NODE_ID: 2
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_LISTENERS: INTERNAL://:9091,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka-0:9093,1@kafka-1:9093,2@kafka-2:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://kafka-2:9091,EXTERNAL://localhost:29094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CLIENT_LISTENER_NAME: EXTERNAL
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    hostname: kafka-ui
+    depends_on:
+      - kafka-0
+      - kafka-1
+      - kafka-2
+    ports:
+      - "8086:8080"
+    environment:
+      # Название кластера в веб-интерфейсе
+      KAFKA_CLUSTERS_0_NAME: local
+      # Указываем адреса наших брокеров в кластере
+      # так как Kafka-UI и брокеры в одной Docker-сети, то используем порты 9091
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-0:9091,kafka-1:9091,kafka-2:9091
+      # Настройка для динамической конфигурации брокеров через UI
+      DYNAMIC_CONFIG_ENABLED: true
